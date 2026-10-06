@@ -16,7 +16,7 @@ const path = require("path");
 
 // Load a local .env file without requiring an npm package.
 try {
-  const envPath = path.join(__dirname, ".env");
+  const envPath = [".env", "_env"].map(f => path.join(__dirname, f)).find(p => fs.existsSync(p)) || path.join(__dirname, ".env");
   if (fs.existsSync(envPath)) {
     for (const line of fs.readFileSync(envPath, "utf8").split(/\r?\n/)) {
       const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
@@ -146,9 +146,9 @@ function serveStatic(req,res){
   try { urlPath = decodeURIComponent(new URL(req.url, "http://localhost").pathname); }
   catch { res.writeHead(400); return res.end("Bad request"); }
   if(urlPath === "/") urlPath = "/index.html";
-  const safePath = path.normalize(urlPath).replace(/^([.][.][\\/])+/, "");
-  const filePath = path.join(__dirname, safePath);
-  if(!filePath.startsWith(__dirname)) { res.writeHead(403); return res.end("Forbidden"); }
+  const allowed = ["/index.html", "/sastyle.css", "/skillascend.js"];
+  if(!allowed.includes(urlPath)) { res.writeHead(404); return res.end("Not found"); }
+  const filePath = path.join(__dirname, urlPath);
   fs.readFile(filePath,(err,data)=>{
     if(err){ res.writeHead(404); return res.end("Not found"); }
     res.writeHead(200,{"Content-Type":MIME[path.extname(filePath).toLowerCase()] || "application/octet-stream"});
@@ -180,4 +180,9 @@ const server=http.createServer((req,res)=>{
     }
   });
 });
-server.listen(3000,()=>console.log(`SkillAscend running at http://localhost:3000 using ${MODEL}`));
+server.on("error",e=>{
+  if(e.code==="EADDRINUSE") console.error("Port 3000 is already in use. Close the other terminal running node server.js and try again.");
+  else console.error(e.message);
+  process.exit(1);
+});
+server.listen(3000,()=>console.log(`SkillAscend running at http://localhost:3000 using ${MODEL}\nOpen this address in Edge: http://localhost:3000`));
